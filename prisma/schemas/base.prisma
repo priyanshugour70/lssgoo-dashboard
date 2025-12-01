@@ -1,0 +1,15 @@
+// ============================================================================
+// BASE CONFIGURATION
+// ============================================================================
+// This file contains the Prisma generator and datasource configuration
+// It should be included first when merging schemas
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Note: DATABASE_URL is configured in prisma.config.ts for Prisma 7+
+}
+

@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
+    "db:merge": "node prisma/merge-schemas.js",
+    "db:generate": "pnpm db:merge && prisma generate",
+    "db:push": "pnpm db:merge && prisma db push",
+    "db:migrate": "pnpm db:merge && prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts"
   },

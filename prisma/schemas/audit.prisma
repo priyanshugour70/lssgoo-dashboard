@@ -1,0 +1,36 @@
+// ============================================================================
+// AUDIT LOG
+// ============================================================================
+
+/// AuditLog model - Tracks all admin actions for accountability
+/// Records who did what, when, and what changed
+model AuditLog {
+  id        String   @id @default(cuid())
+  
+  // Action details
+  action    String   // e.g., "user.created", "role.updated", "permission.deleted"
+  entity    String   // e.g., "User", "Role", "Permission"
+  entityId  String?  // ID of the affected entity
+  
+  // User who performed the action
+  userId    String?
+  userEmail String?  // Denormalized for easier querying
+  
+  // Change tracking
+  oldValues Json?    // Previous state (for updates)
+  newValues Json?    // New state (for creates/updates)
+  
+  // Request metadata
+  ipAddress String?
+  userAgent String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+

@@ -1,0 +1,103 @@
+// ============================================================================
+// USER AUTHENTICATION & PROFILE MODELS
+// ============================================================================
+
+/// User model - Core authentication and user management
+/// This model handles user authentication, email verification, and account status
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed password (use bcrypt or similar)
+  name      String?
+  
+  // Email verification fields
+  emailVerified Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  
+  // Account status management
+  isActive  Boolean   @default(true)  // Soft delete / account suspension
+  isBlocked Boolean   @default(false) // Admin can block users
+  
+  // Two-factor authentication
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String?
+  
+  // Password reset tokens
+  resetPasswordToken     String?
+  resetPasswordExpires   DateTime?
+  
+  // Last login tracking
+  lastLoginAt DateTime?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  profile        Profile?
+  userRoles      UserRole[]
+  sessions       Session[]
+  refreshTokens  RefreshToken[]
+  accessTokens   AccessToken[]
+  devices        Device[]
+  loginHistory   LoginHistory[]
+  
+  @@index([email])
+  @@index([isActive])
+  @@map("users")
+}
+
+/// Profile model - Extended user information and personal details
+/// Stores additional user information beyond authentication
+model Profile {
+  id     String @id @default(cuid())
+  userId String @unique
+  
+  // Personal Information
+  firstName   String?
+  lastName    String?
+  displayName String? // Custom display name
+  bio         String? @db.Text // User biography/description
+  
+  // Contact Information
+  phone       String?
+  phoneVerified Boolean @default(false)
+  alternateEmail String?
+  
+  // Location
+  country     String?
+  state       String?
+  city        String?
+  address     String?
+  postalCode  String?
+  
+  // Profile Media
+  avatar      String? // URL to avatar image
+  coverImage  String? // URL to cover image
+  
+  // Social Links
+  website     String?
+  linkedin    String?
+  twitter     String?
+  github      String?
+  
+  // Preferences
+  timezone    String? @default("UTC")
+  locale      String? @default("en")
+  dateFormat  String? @default("YYYY-MM-DD")
+  timeFormat  String? @default("24h") // 12h or 24h
+  
+  // Additional Metadata
+  metadata    Json? // Flexible JSON field for custom data
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("profiles")
+}
+

@@ -1,0 +1,138 @@
+// ============================================================================
+// RBAC - ROLE BASED ACCESS CONTROL
+// ============================================================================
+
+/// Role model - Defines user roles in the system
+/// Roles can be hierarchical (e.g., Admin > Manager > User)
+/// Admin can create, edit, and assign roles to users
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "admin", "manager", "user", "moderator"
+  slug        String   @unique // URL-friendly identifier
+  description String?  @db.Text
+  
+  // Role hierarchy - higher number = higher privilege
+  // Useful for permission inheritance
+  level       Int      @default(0)
+  
+  // Role status
+  isActive    Boolean  @default(true)
+  isSystem    Boolean  @default(false) // System roles cannot be deleted
+  
+  // Color for UI display
+  color       String?  // Hex color code for admin dashboard
+  
+  // Metadata
+  metadata    Json?    // Additional role configuration
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // User ID who created this role
+  updatedBy   String?  // User ID who last updated this role
+  
+  // Relations
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+  
+  @@index([slug])
+  @@index([isActive])
+  @@index([level])
+  @@map("roles")
+}
+
+/// Permission model - Individual permissions/actions in the system
+/// Granular permissions that can be assigned to roles
+/// Admin can create, edit, and manage permissions
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "user.create", "user.edit", "user.delete"
+  slug        String   @unique // URL-friendly identifier
+  description String?  @db.Text
+  
+  // Permission category for organization
+  // e.g., "user", "role", "permission", "content", "settings"
+  category    String?
+  
+  // Permission status
+  isActive    Boolean  @default(true)
+  isSystem    Boolean  @default(false) // System permissions cannot be deleted
+  
+  // Metadata
+  metadata    Json?    // Additional permission configuration
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // User ID who created this permission
+  updatedBy   String?  // User ID who last updated this permission
+  
+  // Relations
+  rolePermissions RolePermission[]
+  
+  @@index([slug])
+  @@index([category])
+  @@index([isActive])
+  @@map("permissions")
+}
+
+/// RolePermission - Junction table for Role-Permission many-to-many relationship
+/// Defines which permissions are assigned to which roles
+/// Admin can assign/remove permissions from roles
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  
+  // Optional: Permission can be granted or denied for a role
+  // Useful for role hierarchies where you might want to deny a specific permission
+  granted      Boolean  @default(true)
+  
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  assignedBy   String?  // User ID who assigned this permission
+  
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+/// UserRole - Junction table for User-Role many-to-many relationship
+/// Defines which roles are assigned to which users
+/// Users can have multiple roles, and roles can be assigned to multiple users
+/// Admin can assign/remove roles from users
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  
+  // Optional: Role can be active or inactive for a specific user
+  // Useful for temporary role assignments
+  isActive  Boolean  @default(true)
+  
+  // Optional: Role expiration
+  expiresAt DateTime? // If set, role will be automatically removed after this date
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assignedBy String? // User ID who assigned this role
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@map("user_roles")
+}
+

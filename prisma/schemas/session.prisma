@@ -1,0 +1,271 @@
+// ============================================================================
+// SESSION & TOKEN MANAGEMENT
+// ============================================================================
+
+/// Session model - Custom session management with device and location tracking
+/// Tracks active user sessions, allows force logout by admins
+/// Supports multiple concurrent sessions per user
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Session identification
+  sessionToken String   @unique // Unique session identifier (JWT session ID or custom token)
+  fingerprint  String?  // Browser/device fingerprint for security
+  
+  // Device and location information
+  deviceId     String?  // Reference to Device model
+  ipAddress    String?  // IP address of the session
+  userAgent    String?  // Browser user agent string
+  deviceType   String?  // e.g., "desktop", "mobile", "tablet"
+  deviceName   String?  // e.g., "Chrome on Windows", "Safari on iPhone"
+  browser      String?  // Browser name
+  os           String?  // Operating system
+  location     String?  // Geographic location (city, country)
+  
+  // Session status
+  isActive     Boolean  @default(true)  // Active session flag
+  isRevoked    Boolean  @default(false) // Force revoked by admin or user
+  revokedAt    DateTime? // When session was revoked
+  revokedBy    String?   // User ID who revoked (admin or self)
+  revokedReason String?  // Reason for revocation
+  
+  // Activity tracking
+  lastActivityAt DateTime @default(now()) // Last activity timestamp
+  lastActivityIp String?   // IP of last activity
+  activityCount  Int       @default(0)    // Number of activities in this session
+  
+  // Session lifecycle
+  expiresAt   DateTime // Session expiration time
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device        Device?        @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  refreshTokens RefreshToken[]
+  
+  @@index([userId])
+  @@index([sessionToken])
+  @@index([isActive])
+  @@index([isRevoked])
+  @@index([expiresAt])
+  @@index([lastActivityAt])
+  @@map("sessions")
+}
+
+/// RefreshToken model - Refresh token management with rotation support
+/// Stores refresh tokens for JWT token rotation
+/// Supports token family tracking to prevent token reuse attacks
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Token identification
+  token       String   @unique // The refresh token itself (hashed)
+  tokenHash   String   @unique // Hashed version for lookup
+  familyId    String?  // Token family ID for rotation tracking
+  
+  // Device and session tracking
+  deviceId    String?  // Reference to Device model
+  sessionId   String?  // Reference to Session model
+  ipAddress   String?  // IP address when token was created
+  userAgent   String?  // User agent when token was created
+  
+  // Token status
+  isActive    Boolean  @default(true)  // Active token flag
+  isRevoked   Boolean  @default(false) // Revoked token (for security)
+  revokedAt   DateTime? // When token was revoked
+  revokedBy   String?   // User ID who revoked
+  revokedReason String? // Reason for revocation
+  
+  // Rotation tracking (prevent token reuse attacks)
+  rotatedAt   DateTime? // When this token was rotated
+  rotatedTo   String?   // New token ID that replaced this one
+  parentTokenId String? // Parent token if this was created via rotation
+  
+  // Token lifecycle
+  expiresAt   DateTime // Token expiration time
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device      Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  session     Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([familyId])
+  @@index([sessionId])
+  @@index([isActive])
+  @@index([isRevoked])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+/// AccessToken model - Access token tracking (optional but recommended)
+/// Tracks issued access tokens for security and audit purposes
+/// Useful for token blacklisting and security monitoring
+model AccessToken {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Token identification
+  token       String   @unique // The access token (JWT ID or hash)
+  tokenHash   String   @unique // Hashed version for lookup
+  jti         String?  @unique // JWT ID (JTI claim) if using JWT
+  
+  // Token metadata
+  refreshTokenId String? // Associated refresh token
+  sessionId      String? // Associated session
+  deviceId       String? // Device used
+  ipAddress      String? // IP address when token was issued
+  userAgent      String? // User agent when token was issued
+  
+  // Token status
+  isActive    Boolean  @default(true)  // Active token flag
+  isRevoked   Boolean  @default(false) // Revoked token
+  revokedAt   DateTime? // When token was revoked
+  revokedBy   String?   // User ID who revoked
+  
+  // Token lifecycle
+  expiresAt   DateTime // Token expiration time
+  issuedAt    DateTime @default(now()) // When token was issued
+  lastUsedAt  DateTime? // Last time token was used
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([jti])
+  @@index([isActive])
+  @@index([isRevoked])
+  @@index([expiresAt])
+  @@map("access_tokens")
+}
+
+/// Device model - Track user devices for security and session management
+/// Stores information about devices users log in from
+/// Helps identify suspicious login attempts
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Device identification
+  deviceId    String   // Unique device identifier (fingerprint or UUID)
+  deviceName  String?  // User-friendly device name
+  deviceType  String?  // e.g., "desktop", "mobile", "tablet"
+  
+  // Device details
+  browser     String?  // Browser name and version
+  os          String?  // Operating system
+  osVersion   String?  // OS version
+  platform    String?  // Platform (web, iOS, Android, etc.)
+  
+  // Location
+  ipAddress   String?  // Last known IP address
+  location    String?  // Geographic location
+  country     String?  // Country code
+  city        String?  // City name
+  
+  // Device status
+  isTrusted   Boolean  @default(false) // User marked as trusted device
+  isBlocked   Boolean  @default(false) // Admin blocked this device
+  blockedAt   DateTime? // When device was blocked
+  blockedBy   String?   // User ID who blocked
+  blockedReason String? // Reason for blocking
+  
+  // Activity tracking
+  firstSeenAt DateTime @default(now()) // First time this device was seen
+  lastSeenAt  DateTime @default(now()) // Last time this device was used
+  loginCount  Int      @default(1)     // Number of logins from this device
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+  refreshTokens RefreshToken[]
+  
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([deviceId])
+  @@index([isTrusted])
+  @@index([isBlocked])
+  @@map("devices")
+}
+
+/// LoginHistory model - Track all login attempts and history
+/// Records successful and failed login attempts
+/// Useful for security monitoring and audit trails
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String?  // Null for failed login attempts with unknown user
+  
+  // Login attempt details
+  email     String?  // Email used in login attempt (for failed attempts)
+  success   Boolean  @default(false) // Whether login was successful
+  failureReason String? // Reason for failure (e.g., "invalid_password", "user_not_found")
+  
+  // Device and location
+  deviceId    String?  // Device used
+  ipAddress   String?  // IP address
+  userAgent   String?  // User agent
+  location    String?  // Geographic location
+  country     String?  // Country code
+  
+  // Security flags
+  isSuspicious Boolean @default(false) // Flagged as suspicious activity
+  riskScore    Int?    // Risk score (0-100)
+  
+  // Session and token references (for successful logins)
+  sessionId      String? // Created session ID
+  refreshTokenId String? // Created refresh token ID
+  
+  // Timestamps
+  attemptedAt DateTime @default(now())
+  
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([email])
+  @@index([success])
+  @@index([isSuspicious])
+  @@index([attemptedAt])
+  @@index([ipAddress])
+  @@map("login_history")
+}
+
+/// TokenBlacklist model - Blacklist revoked tokens
+/// Stores tokens that have been revoked and should be rejected
+/// Useful for immediate token invalidation
+model TokenBlacklist {
+  id        String   @id @default(cuid())
+  
+  // Token identification
+  tokenHash   String   @unique // Hashed token to blacklist
+  tokenType   String   // "access" or "refresh"
+  jti         String?  // JWT ID if applicable
+  
+  // Blacklist details
+  userId      String?  // User ID associated with token
+  reason      String?  // Reason for blacklisting (e.g., "logout", "security", "expired")
+  expiresAt   DateTime // When token would naturally expire (for cleanup)
+  
+  // Timestamps
+  blacklistedAt DateTime @default(now())
+  
+  @@index([tokenHash])
+  @@index([userId])
+  @@index([tokenType])
+  @@index([expiresAt])
+  @@map("token_blacklist")
+}
+
