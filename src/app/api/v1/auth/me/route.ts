@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
     const context = await getAuthContext(request);
     
     if (!context) {
+      // Return a clear message that user is not logged in
       return Response.json(
-        errorResponse(ErrorCodes.UNAUTHORIZED, 'Unauthorized'),
+        errorResponse(ErrorCodes.UNAUTHORIZED, 'Not logged in. Please log in to continue.'),
         { status: 401 }
       );
     }
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     if (error.message === ErrorCodes.UNAUTHORIZED) {
       return Response.json(
-        errorResponse(ErrorCodes.UNAUTHORIZED, 'Unauthorized'),
+        errorResponse(ErrorCodes.UNAUTHORIZED, 'Not logged in. Please log in to continue.'),
         { status: 401 }
       );
     }

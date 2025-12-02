@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     if (error.message === ErrorCodes.UNAUTHORIZED) {
       return Response.json(
-        errorResponse(ErrorCodes.UNAUTHORIZED, 'Unauthorized'),
+        errorResponse(ErrorCodes.UNAUTHORIZED, 'Not logged in. Please log in to continue.'),
         { status: 401 }
       );
     }

@@ -10,7 +10,7 @@ interface AuthState {
   hasCheckedAuth: boolean;
   setUser: (user: AuthUser | null) => void;
   setLoading: (loading: boolean) => void;
-  clearAuth: () => void;
+  clearAuth: (resetCheck?: boolean) => void;
   setHasCheckedAuth: (checked: boolean) => void;
 }
 
@@ -25,12 +25,23 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: !!user,
     }),
   setLoading: (isLoading) => set({ isLoading }),
-  clearAuth: () =>
+  clearAuth: (resetCheck = false) => {
+    // Clear any localStorage items if needed
+    if (typeof window !== 'undefined') {
+      // Clear any auth-related localStorage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('auth_checked');
+    }
     set({
       user: null,
       isAuthenticated: false,
-      hasCheckedAuth: false,
-    }),
+      // If resetCheck is true (e.g., on logout), reset hasCheckedAuth
+      // Otherwise keep it true (e.g., on 401 - we've already checked)
+      hasCheckedAuth: resetCheck ? false : true,
+      isLoading: false,
+    });
+  },
   setHasCheckedAuth: (hasCheckedAuth) => set({ hasCheckedAuth }),
 }));
 

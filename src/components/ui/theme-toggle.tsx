@@ -22,9 +22,6 @@ export function ThemeToggle() {
       type="text"
       icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-    >
-      {theme === 'dark' ? 'Light' : 'Dark'}
-    </Button>
+    />
   );
 }
-

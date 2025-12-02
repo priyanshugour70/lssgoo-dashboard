@@ -17,14 +17,36 @@ export function useAuth() {
     setHasCheckedAuth,
   } = useAuthStore();
 
+
+  // Helper to check if we might have a token
+  // Since cookies are httpOnly, we can't read them directly
+  // So we use a localStorage flag that's set on login and cleared on logout
+  const mightHaveToken = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    // Check if we have a flag indicating we might be logged in
+    // This is set when user logs in and cleared when they logout
+    return localStorage.getItem('auth_checked') === 'true';
+  };
+
   // Check auth status on mount (only once globally)
   useEffect(() => {
-    // Skip if already checked or currently loading
-    if (hasCheckedAuth || isLoading) return;
+    // Skip if already checked
+    if (hasCheckedAuth) return;
     
     // Skip if user is already authenticated
     if (isAuthenticated) {
       setHasCheckedAuth(true);
+      setLoading(false);
+      return;
+    }
+    
+    // Check if we might have a token before making API call
+    // If no flag exists, user is definitely not logged in - skip API call
+    if (!mightHaveToken()) {
+      // No token flag - user is definitely not logged in, skip API call
+      setHasCheckedAuth(true);
+      setLoading(false);
+      clearAuth();
       return;
     }
     
@@ -32,30 +54,50 @@ export function useAuth() {
     
     const checkAuth = async () => {
       try {
+        // Mark that we're checking auth and set loading
         setHasCheckedAuth(true);
         setLoading(true);
+        
         const response = await fetch('/api/v1/auth/me', {
           credentials: 'include',
         });
 
         if (!isMounted) return;
 
-        if (response.ok) {
+        // Treat any non-200 response as "logged out"
+        if (response.ok && response.status === 200) {
           const data = await response.json();
           if (data.success && data.data) {
             setUser(data.data);
+            setLoading(false);
+            // Set flag indicating we have auth
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_checked', 'true');
+            }
           } else {
+            // API returned success but no data - treat as logged out
             clearAuth();
+            // clearAuth already clears the flag, but ensure it's cleared
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('auth_checked');
+            }
           }
         } else {
+          // Any non-200 response means user is not logged in
+          // This includes 401, 403, 500, etc.
           clearAuth();
+          // clearAuth already clears the flag, but ensure it's cleared
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_checked');
+          }
         }
       } catch (error) {
         if (!isMounted) return;
+        // Clear auth on error
         clearAuth();
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+        // clearAuth already clears the flag, but ensure it's cleared
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_checked');
         }
       }
     };
@@ -85,6 +127,10 @@ export function useAuth() {
       }
 
       setUser(data.data.user);
+      // Set flag indicating we have auth
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_checked', 'true');
+      }
       return data.data;
     } catch (error) {
       throw error;
@@ -110,6 +156,10 @@ export function useAuth() {
       }
 
       setUser(data.data.user);
+      // Set flag indicating we have auth
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_checked', 'true');
+      }
       return data.data;
     } catch (error) {
       throw error;
@@ -126,10 +176,19 @@ export function useAuth() {
         credentials: 'include',
       });
 
-      clearAuth();
+      // Reset auth check on logout so next visit will check again
+      clearAuth(true);
+      // Clear the flag
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_checked');
+      }
     } catch (error) {
       // Clear auth even if logout fails
-      clearAuth();
+      clearAuth(true);
+      // Clear the flag
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_checked');
+      }
     } finally {
       setLoading(false);
     }
@@ -189,6 +248,7 @@ export function useAuth() {
     user,
     isAuthenticated,
     isLoading,
+    hasCheckedAuth,
     login,
     register,
     logout,
