@@ -1,0 +1,166 @@
+# LSSGOO Dashboard - Coding Conventions
+
+## File Naming Convention
+- **MUST** use kebab-case for all files: `auth-service.ts`, `use-auth.ts`, `button.tsx`, `full-details.tsx`
+- **MUST** follow this pattern strictly for all files in the project
+
+## Folder Structure
+```
+src/
+├── app/                    # Next.js app directory
+│   └── api/v1/            # API routes (v1 versioning)
+│       └── {feature}/      # Feature-based subfolders
+├── components/             # React components
+│   ├── ui/                # UI components
+│   ├── auth/              # Auth-related components
+│   ├── layout/            # Layout components
+│   └── {feature}/         # Feature-specific components
+│       └── common/         # Common components for feature
+├── hooks/                  # React hooks
+│   └── {feature}/         # Feature-specific hooks
+│       └── common/        # Common hooks for feature
+├── service/               # Business logic services
+│   └── {feature}/         # Feature-specific services
+│       └── common/        # Common services for feature
+├── store/                  # State management (Zustand)
+│   └── {feature}/         # Feature-specific stores
+│       └── common/        # Common stores for feature
+├── types/                  # TypeScript types
+├── lib/                    # Utility libraries
+│   ├── utils/             # Utility functions
+│   └── middleware/        # Middleware functions
+└── providers/             # React context providers
+```
+
+## Development Pattern
+Every feature MUST follow this pattern:
+```
+page.tsx → component → hooks → store → service → src/app/api/v1/{feature}/**
+```
+
+1. **Page** (`page.tsx`) - Next.js page component
+2. **Component** - React UI component
+3. **Hooks** - Custom React hooks for component logic
+4. **Store** - Zustand store for state management
+5. **Service** - Business logic service layer
+6. **API Route** - Next.js API route handler
+
+## Type System
+- **MUST** use types in every API, no exceptions
+- All API requests/responses MUST use types from `src/types/`
+- Use Zod schemas for validation
+- Export all types from `src/types/index.ts`
+
+## API Response Pattern
+- **MUST** use `APIResponse<T>` for all API responses
+- **MUST** use `PaginatedResponse<T>` when returning multiple items
+- All APIs MUST follow the response structure in `src/types/api.ts`
+- Every API endpoint MUST return standardized responses
+
+Example:
+```typescript
+// Single item
+return Response.json(successResponse(data));
+
+// Multiple items with pagination
+return Response.json(paginatedResponse(data, page, pageSize, total));
+
+// Error
+return Response.json(errorResponse(ErrorCodes.NOT_FOUND, 'Not found'), { status: 404 });
+```
+
+## Authentication & Authorization
+- **MUST** implement full authentication (login, register, logout, refresh token)
+- **MUST** implement RBAC (Role-Based Access Control) for all protected routes
+- **MUST** use `requireAuth()` middleware for protected routes
+- **MUST** use `requirePermission()` for permission-based access
+- All user actions MUST be tracked in audit logs
+
+## Audit Logging
+- **MUST** log all CRUD operations
+- **MUST** log all authentication events
+- **MUST** log all permission/role changes
+- Use `createAuditLog()` from `@/lib/utils/audit` for all operations
+
+## Session Management
+- **MUST** track all user sessions
+- **MUST** support session revocation
+- **MUST** track device information
+- **MUST** track login history
+
+## Styling
+- **Primary**: Ant Design (antd) - use for all UI components
+- **Secondary**: Tailwind CSS - use for utility classes and custom styling
+- **MUST** support dark/light theme using `next-themes`
+- Use Ant Design's theme system for primary styling
+
+## Code Quality
+- Use TypeScript strictly
+- Use async/await for all async operations
+- Handle errors properly with try/catch
+- Use Zod for all input validation
+- Follow Next.js 16 App Router patterns
+- Use Server Components by default, Client Components only when needed
+
+## API Route Structure
+All API routes MUST be in `src/app/api/v1/{feature}/route.ts` or nested:
+```
+src/app/api/v1/
+├── auth/
+│   ├── login/route.ts
+│   ├── register/route.ts
+│   ├── logout/route.ts
+│   └── refresh/route.ts
+├── users/
+│   ├── route.ts
+│   └── [id]/route.ts
+└── {feature}/
+    └── route.ts
+```
+
+## Error Handling
+- Use `ErrorCodes` from `@/types/api` for all errors
+- Return proper HTTP status codes
+- Always return `APIResponse` format even for errors
+- Log errors appropriately
+
+## Database
+- Use Prisma ORM
+- All database operations MUST go through services
+- Use transactions for multi-step operations
+- Always handle database errors gracefully
+
+## Security
+- Hash passwords with bcrypt (12 rounds minimum)
+- Use JWT for authentication tokens
+- Implement refresh token rotation
+- Validate all inputs with Zod
+- Sanitize user inputs
+- Use HTTPS in production
+- Implement rate limiting (future)
+
+## Testing (Future)
+- Write unit tests for services
+- Write integration tests for API routes
+- Write component tests for UI
+- Maintain >80% code coverage
+
+## Git Workflow
+- Use meaningful commit messages
+- Create feature branches
+- Review code before merging
+- Keep commits atomic
+
+## Performance
+- Use Next.js Image component for images
+- Implement pagination for all list endpoints
+- Use database indexes appropriately
+- Optimize database queries
+- Use React.memo for expensive components
+
+## Documentation
+- Document all API endpoints
+- Add JSDoc comments for complex functions
+- Keep README updated
+- Document environment variables
+

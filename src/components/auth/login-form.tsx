@@ -1,0 +1,63 @@
+'use client';
+
+import { Form, Input, Button, Card, message } from 'antd';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/auth/use-auth';
+import { loginSchema } from '@/types/auth';
+import { useState } from 'react';
+
+export function LoginForm() {
+  const { login } = useAuth();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const onFinish = async (values: any) => {
+    try {
+      setLoading(true);
+      await login(loginSchema.parse(values));
+      message.success('Login successful!');
+      router.push('/');
+    } catch (error: any) {
+      message.error(error.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card title="Login" className="max-w-md mx-auto mt-8">
+      <Form
+        name="login"
+        onFinish={onFinish}
+        layout="vertical"
+        autoComplete="off"
+      >
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: 'Please input your email!' },
+            { type: 'email', message: 'Please enter a valid email!' },
+          ]}
+        >
+          <Input />
+        </Form.Item>
+
+        <Form.Item
+          label="Password"
+          name="password"
+          rules={[{ required: true, message: 'Please input your password!' }]}
+        >
+          <Input.Password />
+        </Form.Item>
+
+        <Form.Item>
+          <Button type="primary" htmlType="submit" block loading={loading}>
+            Login
+          </Button>
+        </Form.Item>
+      </Form>
+    </Card>
+  );
+}
+
